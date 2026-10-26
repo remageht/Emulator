@@ -61,6 +61,18 @@ namespace Emulator.Tests
                 Console.ResetColor();
             }
 
+            try
+            {
+                CoreTests.RunAll();
+            }
+            catch (Exception ex)
+            {
+                failureCount++;
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[FAIL] CoreTests: {ex.Message}\n{ex.StackTrace}\n");
+                Console.ResetColor();
+            }
+
             Console.WriteLine("=================================================");
             if (failureCount == 0)
             {

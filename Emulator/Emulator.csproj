@@ -13,7 +13,11 @@
     <AssemblyName>Emulator</AssemblyName>
     <ApplicationHighDpiMode>DpiUnaware</ApplicationHighDpiMode>
     <NuGetAudit>false</NuGetAudit>
-    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <NoWarn>$(NoWarn);CA1416;WFO1000</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\Emulator.Core\Emulator.Core.csproj" />
+  </ItemGroup>
 
 </Project>

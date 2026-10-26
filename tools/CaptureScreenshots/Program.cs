@@ -14,49 +14,91 @@ namespace CaptureScreenshots
         {
             try
             {
-                string outDir = args.Length > 0 ? args[0] : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../docs/screenshots/original"));
-                Directory.CreateDirectory(outDir);
-                Console.WriteLine("Output directory: " + outDir);
+                string baseDir = args.Length > 0 ? args[0] : Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../docs/screenshots/stage1"));
+                string artifactDir = @"C:\Users\Эмир\.gemini\antigravity\brain\543fa310-12f9-4b8e-bc9b-df193e14fc10\screenshots\stage1";
+                Directory.CreateDirectory(baseDir);
+                Directory.CreateDirectory(artifactDir);
 
-                using (var form = new ProgramLogic())
+                Console.WriteLine("Capturing MainForm screenshots to: " + baseDir);
+
+                using (var form = new MainForm())
                 {
                     form.Show();
                     Application.DoEvents();
+                    System.Threading.Thread.Sleep(300);
+                    Application.DoEvents();
 
-                    var tabControl = form.Controls["TabLabsControl"] as TabControl;
-                    if (tabControl == null)
+                    Console.WriteLine($"MainForm: Size={form.Size}, ClientSize={form.ClientSize}");
+                    var mainTabControl = form.Controls[0] as TabControl;
+                    if (mainTabControl == null)
                     {
-                        Console.WriteLine("Error: TabLabsControl not found");
+                        Console.WriteLine("Error: mainTabControl not found");
                         return 1;
                     }
+                    Console.WriteLine($"mainTabControl: Size={mainTabControl.Size}, ClientSize={mainTabControl.ClientSize}");
+                    Console.WriteLine($"ClassicPanel: Size={form.ClassicPanel?.Size}, ClientSize={form.ClassicPanel?.ClientSize}");
 
-                    for (int i = 0; i < tabControl.TabCount; i++)
+                    // 1. Capture Main Classic Tab
+                    mainTabControl.SelectedIndex = 0;
+                    Application.DoEvents();
+                    System.Threading.Thread.Sleep(200);
+                    Application.DoEvents();
+
+                    SaveBitmap(form, Path.Combine(baseDir, "main_classic.png"));
+                    SaveBitmap(form, Path.Combine(artifactDir, "main_classic.png"));
+                    Console.WriteLine("Saved: main_classic.png");
+
+                    // 2. Capture all 6 lab tabs of classic panel
+                    var classicPanel = form.ClassicPanel;
+                    if (classicPanel != null)
                     {
-                        tabControl.SelectedIndex = i;
-                        Application.DoEvents();
-                        System.Threading.Thread.Sleep(200);
-                        Application.DoEvents();
-
-                        using (var bmp = new Bitmap(form.Width, form.Height))
+                        var labsTabControl = classicPanel.Controls["TabLabsControl"] as TabControl;
+                        if (labsTabControl != null)
                         {
-                            form.DrawToBitmap(bmp, new Rectangle(0, 0, form.Width, form.Height));
-                            string safeName = $"tab_{i + 1}_lab_{i + 1}.png";
-                            string outPath = Path.Combine(outDir, safeName);
-                            bmp.Save(outPath, ImageFormat.Png);
-                            Console.WriteLine($"Saved screenshot: {outPath}");
+                            for (int i = 0; i < labsTabControl.TabCount; i++)
+                            {
+                                labsTabControl.SelectedIndex = i;
+                                Application.DoEvents();
+                                System.Threading.Thread.Sleep(150);
+                                Application.DoEvents();
+
+                                string name = $"classic_lab_{i + 1}.png";
+                                SaveBitmap(form, Path.Combine(baseDir, name));
+                                SaveBitmap(form, Path.Combine(artifactDir, name));
+                                Console.WriteLine($"Saved: {name}");
+                            }
                         }
                     }
+
+                    // 3. Capture Modern Tab
+                    mainTabControl.SelectedIndex = 1;
+                    Application.DoEvents();
+                    System.Threading.Thread.Sleep(200);
+                    Application.DoEvents();
+
+                    SaveBitmap(form, Path.Combine(baseDir, "main_modern.png"));
+                    SaveBitmap(form, Path.Combine(artifactDir, "main_modern.png"));
+                    Console.WriteLine("Saved: main_modern.png");
 
                     form.Close();
                 }
 
-                Console.WriteLine("All screenshots captured successfully.");
+                Console.WriteLine("All Stage 1 screenshots captured successfully.");
                 return 0;
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Exception capturing screenshots: " + ex);
                 return 2;
+            }
+        }
+
+        private static void SaveBitmap(Form form, string path)
+        {
+            using (var bmp = new Bitmap(form.Width, form.Height))
+            {
+                form.DrawToBitmap(bmp, new Rectangle(0, 0, form.Width, form.Height));
+                bmp.Save(path, ImageFormat.Png);
             }
         }
     }

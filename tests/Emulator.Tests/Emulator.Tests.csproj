@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Emulator\Emulator.csproj" />
+    <ProjectReference Include="..\..\src\Emulator.Core\Emulator.Core.csproj" />
   </ItemGroup>
 
   <Target Name="VSTest">
