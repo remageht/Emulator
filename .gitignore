@@ -121,3 +121,10 @@ ipch/
 *.ldf
 *.ndf
 
+# Test results and IDEs
+TestResults/
+.idea/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates

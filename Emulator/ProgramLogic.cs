@@ -1,4 +1,4 @@
-﻿// Decompiled with JetBrains decompiler
+// Decompiled with JetBrains decompiler
 // Type: Emulator.ProgramLogic
 // Assembly: Emulator, Version=1.0.3072.15671, Culture=neutral, PublicKeyToken=null
 // MVID: 2D14D142-75FF-4DBB-9D56-6B1C926FB47E
@@ -986,75 +986,27 @@ namespace Emulator
 
     private void But_VVOD_Click(object sender, EventArgs e)
     {
-            //openFileDialog1 = new OpenFileDialog();
-            if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            {
-                System.IO.StreamReader sr = new
-                   System.IO.StreamReader(openFileDialog1.FileName);
-                // MessageBox.Show(sr.ReadToEnd());
-                IntelHEX = sr.ReadToEnd();
-                sr.Close();
-                //memory.setMemoryValue(0x8200, 0xF, 0xA);
-                int iLenghtMAX = IntelHEX.Length;
-                int iMemPosHex = 0;
-                int iLenght = 0;
-                String sTempHexValue;
-                int iStringStart = 0;
-                bool bStringEnd = false;
-                while (!bStringEnd)
-                {
-                    if (IntelHEX[iStringStart] == ':')
-                    {
-                        iStringStart++;
-
-                            sTempHexValue = IntelHEX.Substring(iStringStart, 2);
-
-                            iLenght = Convert.ToInt32(sTempHexValue, 16);
-
-
-                        iStringStart+= 2;
-                        sTempHexValue = IntelHEX.Substring(iStringStart, 4);
-                        iMemPosHex = Convert.ToInt32(sTempHexValue, 16);
-                    
-                        iStringStart += 6;
-                        sTempHexValue = IntelHEX.Substring(iStringStart, iLenght * 2);
-                        
-                        iStringStart += iLenght * 2 + 1;
-                        if (iStringStart + 1 < IntelHEX.Length)
-                        {
-
-                            iStringStart++;
-                        }
-                        else
-                        {
-                            bStringEnd = true;
-                        }
-                        if (iLenght == 0)
-                        {
-                            bStringEnd = true;
-                            continue;
-                        }
-                        for (int index = 0; index < iLenght; index++)
-                        {
-                           
-                            memory.setMemoryValue(iMemPosHex+index, Convert.ToInt32(sTempHexValue[index * 2].ToString(), 16), Convert.ToInt32(sTempHexValue[index * 2 + 1].ToString(), 16));
-                        }
-
-
-                    }
-                    else
-                    {
-                        bStringEnd = true;
-                    }
-                }
-                string hexString = this.LeftIAR.getHexString();
-                int signifDigit = 0;
-                int loverDigit = 0;
-                this.memory.getMemoryValue(hexString, ref signifDigit, ref loverDigit);
-                this.RightIRD.addTwoDigits(signifDigit, loverDigit);
-                this.redrawDigits();
-            }
+      if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+      {
+        try
+        {
+          string content = System.IO.File.ReadAllText(openFileDialog1.FileName);
+          this.IntelHEX = content;
+          IntelHex.LoadToMemory(content, this.memory);
         }
+        catch (Exception ex)
+        {
+          MessageBox.Show("Помилка завантаження Intel HEX: " + ex.Message, "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        string hexString = this.LeftIAR.getHexString();
+        int signifDigit = 0;
+        int loverDigit = 0;
+        this.memory.getMemoryValue(hexString, ref signifDigit, ref loverDigit);
+        this.RightIRD.addTwoDigits(signifDigit, loverDigit);
+        this.redrawDigits();
+      }
+    }
 
     private void But_VUVOD_Click(object sender, EventArgs e)
     {
