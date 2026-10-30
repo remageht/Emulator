@@ -73,6 +73,42 @@ namespace Emulator.Tests
                 Console.ResetColor();
             }
 
+            try
+            {
+                AssemblerTests.RunAll();
+            }
+            catch (Exception ex)
+            {
+                failureCount++;
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[FAIL] AssemblerTests: {ex.Message}\n{ex.StackTrace}\n");
+                Console.ResetColor();
+            }
+
+            try
+            {
+                ExtendedCpuTests.RunAll();
+            }
+            catch (Exception ex)
+            {
+                failureCount++;
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[FAIL] ExtendedCpuTests: {ex.Message}\n{ex.StackTrace}\n");
+                Console.ResetColor();
+            }
+
+            try
+            {
+                StudioIntegrationTests.RunAll();
+            }
+            catch (Exception ex)
+            {
+                failureCount++;
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"[FAIL] StudioIntegrationTests: {ex.Message}\n{ex.StackTrace}\n");
+                Console.ResetColor();
+            }
+
             Console.WriteLine("=================================================");
             if (failureCount == 0)
             {

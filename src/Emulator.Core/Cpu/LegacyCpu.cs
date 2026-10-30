@@ -26,6 +26,7 @@ namespace Emulator.Core.Cpu
 
         public CpuState State { get; }
         public CpuProfile Profile => CpuProfile.Legacy;
+        public int CallStackDepth => CallStack.Count;
 
         public class CallStackElement
         {
@@ -35,6 +36,16 @@ namespace Emulator.Core.Cpu
         }
 
         public Stack<CallStackElement> CallStack { get; } = new Stack<CallStackElement>();
+
+        public IReadOnlyList<ushort> GetCallStack()
+        {
+            List<ushort> addresses = new List<ushort>(CallStack.Count);
+            foreach (CallStackElement element in CallStack)
+            {
+                addresses.Add((ushort)element.RetAddress);
+            }
+            return addresses;
+        }
 
         public LegacyCpu(
             IMemory memory,

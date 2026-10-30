@@ -8,7 +8,7 @@ namespace Emulator.Core.Machine
     public sealed class Machine
     {
         public NibbleMemory Memory { get; }
-        public LegacyCpu Cpu { get; }
+        public ICpu Cpu { get; }
         public PpiState Ppi { get; }
         public DisplayState Display { get; }
         public AnalogState Analog { get; }
@@ -22,7 +22,8 @@ namespace Emulator.Core.Machine
         public Machine(
             ISound sound = null,
             IClock clock = null,
-            IDiagnostics diagnostics = null)
+            IDiagnostics diagnostics = null,
+            CpuProfile profile = CpuProfile.Legacy)
         {
             Sound = sound;
             Clock = clock;
@@ -33,14 +34,28 @@ namespace Emulator.Core.Machine
             Display = new DisplayState();
             Analog = new AnalogState();
 
-            Cpu = new LegacyCpu(
-                Memory,
-                Ppi,
-                Display,
-                Analog,
-                Sound,
-                Clock,
-                Diagnostics);
+            if (profile == CpuProfile.Extended)
+            {
+                Cpu = new ExtendedCpu(
+                    Memory,
+                    Ppi,
+                    Display,
+                    Analog,
+                    Sound,
+                    Clock,
+                    Diagnostics);
+            }
+            else
+            {
+                Cpu = new LegacyCpu(
+                    Memory,
+                    Ppi,
+                    Display,
+                    Analog,
+                    Sound,
+                    Clock,
+                    Diagnostics);
+            }
         }
 
         public bool Step()
@@ -84,7 +99,7 @@ namespace Emulator.Core.Machine
                 SP = cpuState.SP,
                 Cycles = cpuState.Cycles,
                 Flags = cpuState.Flags,
-                CallStackDepth = Cpu.CallStack.Count,
+                CallStackDepth = Cpu.CallStackDepth,
 
                 PpiLamps = Ppi.Lamps,
                 PpiControlWord = Ppi.ControlWord,
