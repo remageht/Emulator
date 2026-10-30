@@ -105,6 +105,7 @@ jobs:
           -r ${{ matrix.rid }}
           --self-contained true
           --source https://api.nuget.org/v3/index.json
+          --source https://api.nuget.org/v3/index.json
           -p:PublishSingleFile=true
           -p:DebugType=None
           -p:DebugSymbols=false
@@ -118,6 +119,7 @@ jobs:
           -r ${{ matrix.rid }}
           --self-contained true
           --source https://api.nuget.org/v3/index.json
+          --source https://api.nuget.org/v3/index.json
           -p:PublishSingleFile=true
           -p:DebugType=None
           -p:DebugSymbols=false
@@ -130,6 +132,7 @@ jobs:
           -c Release
           -r ${{ matrix.rid }}
           --self-contained true
+          --source https://api.nuget.org/v3/index.json
           --source https://api.nuget.org/v3/index.json
           -p:PublishSingleFile=true
           -p:DebugType=None
