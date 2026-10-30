@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Emulator.Core</RootNamespace>
+    <AssemblyName>Emulator.Core</AssemblyName>
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+
+</Project>

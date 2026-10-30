@@ -121,3 +121,15 @@ ipch/
 *.ldf
 *.ndf
 
+# Test results and IDEs
+TestResults/
+.idea/
+*.user
+*.userosscache
+*.suo
+*.sln.docstates
+
+# Local publish output and generated release archives
+dist/
+release_packages/
+publish/

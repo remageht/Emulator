@@ -1,4 +1,4 @@
-﻿// Decompiled with JetBrains decompiler
+// Decompiled with JetBrains decompiler
 // Type: Emulator.CInterpreter
 // Assembly: Emulator, Version=1.0.3072.15671, Culture=neutral, PublicKeyToken=null
 // MVID: 2D14D142-75FF-4DBB-9D56-6B1C926FB47E
@@ -28,6 +28,7 @@ namespace Emulator
         private const int REGP_SP = 3;
         private CMemory memory;
         private int curAddr;
+        public int PC { get => curAddr; set => curAddr = value; }
         public bool bProgExecuted;
         public bool bMainAllertActive=true;
 

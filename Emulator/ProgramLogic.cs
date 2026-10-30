@@ -1,4 +1,4 @@
-﻿// Decompiled with JetBrains decompiler
+// Decompiled with JetBrains decompiler
 // Type: Emulator.ProgramLogic
 // Assembly: Emulator, Version=1.0.3072.15671, Culture=neutral, PublicKeyToken=null
 // MVID: 2D14D142-75FF-4DBB-9D56-6B1C926FB47E
@@ -12,7 +12,7 @@ using System.Threading;
 
 namespace Emulator
 {
-  public class ProgramLogic : Form
+  public class ProgramLogic : UserControl
   {
     public CIndicator LeftIAR = new CIndicator();
     public CIndicator RightIRD = new CIndicator();
@@ -86,6 +86,31 @@ namespace Emulator
     private IContainer components;
     private CMemory memory;
     private CInterpreter interpreter;
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [Browsable(false)]
+    public CMemory Memory
+    {
+      get
+      {
+        EnsureInitialized();
+        return memory;
+      }
+      internal set => memory = value;
+    }
+
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    [Browsable(false)]
+    public CInterpreter Interpreter
+    {
+      get
+      {
+        EnsureInitialized();
+        return interpreter;
+      }
+      internal set => interpreter = value;
+    }
+
     private OpenFileDialog openFileDialog1;
     private String IntelHEX;
    //     private Thread CInterpreterT;
@@ -610,8 +635,7 @@ namespace Emulator
       this.PPI.Name = "PPI";
       this.PPI.Size = new Size(216, 296);
       this.PPI.TabIndex = 1;
-      this.AutoScaleBaseSize = new Size(5, 13);
-      this.ClientSize = new Size(912, 518);
+      this.Size = new Size(912, 518);
       this.Controls.Add((Control) this.label1);
       this.Controls.Add((Control) this.TBRegisterVals);
       this.Controls.Add((Control) this.groupBox2);
@@ -635,29 +659,104 @@ namespace Emulator
     }
 
 
-    [STAThread]
-    private static void Main()
+    public void EnsureInitialized()
     {
-      Application.Run((Form) new ProgramLogic());
-    }
-
-    private void Form1_Load(object sender, EventArgs e)
-    {
+      if (this.memory != null) return;
       this.memory = new CMemory(ref this.PPI);
       this.interpreter = new CInterpreter(ref this.memory);
       this.PPI.setMemory(ref this.memory);
       this.LeftIAR.reset();
       this.RightIRD.reset();
       this.redrawDigits();
-      //Timer timer = new Timer();
-      //timer.Interval = 100;
-      //timer.Tick += new EventHandler(this.OnTimerTick);
-      //timer.Start();
       this.showRegsAndFlags();
-      interpreter.PLRoutine = this;
+      this.interpreter.PLRoutine = this;
       CLabWorks.Init();
-      openFileDialog1 = new OpenFileDialog();
-      //memory.setMemoryValue(0x8200, 0xF, 0xA);
+      this.openFileDialog1 = new OpenFileDialog();
+    }
+
+    private void Form1_Load(object sender, EventArgs e)
+    {
+      this.EnsureInitialized();
+    }
+
+    public void SyncToMachine(Emulator.Core.Machine.Machine target)
+    {
+      if (target == null) return;
+      EnsureInitialized();
+
+      for (int addr = 0x8000; addr <= 0x83FF; addr++)
+      {
+        target.Memory.WriteByte((ushort)addr, (byte)this.memory.getByteValue(addr));
+      }
+
+      target.Cpu.State.A = (byte)this.memory.getRegister(7);
+      target.Cpu.State.B = (byte)this.memory.getRegister(0);
+      target.Cpu.State.C = (byte)this.memory.getRegister(1);
+      target.Cpu.State.D = (byte)this.memory.getRegister(2);
+      target.Cpu.State.E = (byte)this.memory.getRegister(3);
+      target.Cpu.State.H = (byte)this.memory.getRegister(4);
+      target.Cpu.State.L = (byte)this.memory.getRegister(5);
+
+      target.Cpu.State.Flags.AC = this.memory.flagReg.AC;
+      target.Cpu.State.Flags.C = this.memory.flagReg.C;
+      target.Cpu.State.Flags.P = this.memory.flagReg.P;
+      target.Cpu.State.Flags.S = this.memory.flagReg.S;
+      target.Cpu.State.Flags.Z = this.memory.flagReg.Z;
+
+      if (this.interpreter != null)
+      {
+        target.Cpu.State.PC = (ushort)this.interpreter.PC;
+      }
+
+      if (this.PPI != null)
+      {
+        target.Ppi.Lamps = this.PPI.GetLampsByte();
+        target.Ppi.Tumbler1 = this.PPI.CB1.Checked;
+        target.Ppi.Tumbler2 = this.PPI.CB2.Checked;
+        target.Ppi.Tumbler3 = this.PPI.CB3.Checked;
+      }
+    }
+
+    public void SyncFromMachine(Emulator.Core.Machine.Machine source)
+    {
+      if (source == null) return;
+      EnsureInitialized();
+
+      for (int addr = 0x8000; addr <= 0x83FF; addr++)
+      {
+        byte b = source.Memory.ReadByte((ushort)addr);
+        this.memory.setMemoryValue(addr, (b >> 4) & 0x0F, b & 0x0F);
+      }
+
+      this.memory.setRegister(7, source.Cpu.State.A);
+      this.memory.setRegister(0, source.Cpu.State.B);
+      this.memory.setRegister(1, source.Cpu.State.C);
+      this.memory.setRegister(2, source.Cpu.State.D);
+      this.memory.setRegister(3, source.Cpu.State.E);
+      this.memory.setRegister(4, source.Cpu.State.H);
+      this.memory.setRegister(5, source.Cpu.State.L);
+
+      this.memory.flagReg.AC = source.Cpu.State.Flags.AC;
+      this.memory.flagReg.C = source.Cpu.State.Flags.C;
+      this.memory.flagReg.P = source.Cpu.State.Flags.P;
+      this.memory.flagReg.S = source.Cpu.State.Flags.S;
+      this.memory.flagReg.Z = source.Cpu.State.Flags.Z;
+
+      if (this.interpreter != null)
+      {
+        this.interpreter.PC = source.Cpu.State.PC;
+      }
+
+      if (this.PPI != null)
+      {
+        this.PPI.SetLampsByte(source.Ppi.Lamps);
+        this.PPI.CB1.Checked = source.Ppi.Tumbler1;
+        this.PPI.CB2.Checked = source.Ppi.Tumbler2;
+        this.PPI.CB3.Checked = source.Ppi.Tumbler3;
+      }
+
+      this.showRegsAndFlags();
+      this.redrawDigits();
     }
     
         public void OuputMemory()
@@ -986,75 +1085,27 @@ namespace Emulator
 
     private void But_VVOD_Click(object sender, EventArgs e)
     {
-            //openFileDialog1 = new OpenFileDialog();
-            if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            {
-                System.IO.StreamReader sr = new
-                   System.IO.StreamReader(openFileDialog1.FileName);
-                // MessageBox.Show(sr.ReadToEnd());
-                IntelHEX = sr.ReadToEnd();
-                sr.Close();
-                //memory.setMemoryValue(0x8200, 0xF, 0xA);
-                int iLenghtMAX = IntelHEX.Length;
-                int iMemPosHex = 0;
-                int iLenght = 0;
-                String sTempHexValue;
-                int iStringStart = 0;
-                bool bStringEnd = false;
-                while (!bStringEnd)
-                {
-                    if (IntelHEX[iStringStart] == ':')
-                    {
-                        iStringStart++;
-
-                            sTempHexValue = IntelHEX.Substring(iStringStart, 2);
-
-                            iLenght = Convert.ToInt32(sTempHexValue, 16);
-
-
-                        iStringStart+= 2;
-                        sTempHexValue = IntelHEX.Substring(iStringStart, 4);
-                        iMemPosHex = Convert.ToInt32(sTempHexValue, 16);
-                    
-                        iStringStart += 6;
-                        sTempHexValue = IntelHEX.Substring(iStringStart, iLenght * 2);
-                        
-                        iStringStart += iLenght * 2 + 1;
-                        if (iStringStart + 1 < IntelHEX.Length)
-                        {
-
-                            iStringStart++;
-                        }
-                        else
-                        {
-                            bStringEnd = true;
-                        }
-                        if (iLenght == 0)
-                        {
-                            bStringEnd = true;
-                            continue;
-                        }
-                        for (int index = 0; index < iLenght; index++)
-                        {
-                           
-                            memory.setMemoryValue(iMemPosHex+index, Convert.ToInt32(sTempHexValue[index * 2].ToString(), 16), Convert.ToInt32(sTempHexValue[index * 2 + 1].ToString(), 16));
-                        }
-
-
-                    }
-                    else
-                    {
-                        bStringEnd = true;
-                    }
-                }
-                string hexString = this.LeftIAR.getHexString();
-                int signifDigit = 0;
-                int loverDigit = 0;
-                this.memory.getMemoryValue(hexString, ref signifDigit, ref loverDigit);
-                this.RightIRD.addTwoDigits(signifDigit, loverDigit);
-                this.redrawDigits();
-            }
+      if (openFileDialog1.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+      {
+        try
+        {
+          string content = System.IO.File.ReadAllText(openFileDialog1.FileName);
+          this.IntelHEX = content;
+          IntelHex.LoadToMemory(content, this.memory);
         }
+        catch (Exception ex)
+        {
+          MessageBox.Show("Помилка завантаження Intel HEX: " + ex.Message, "Помилка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        string hexString = this.LeftIAR.getHexString();
+        int signifDigit = 0;
+        int loverDigit = 0;
+        this.memory.getMemoryValue(hexString, ref signifDigit, ref loverDigit);
+        this.RightIRD.addTwoDigits(signifDigit, loverDigit);
+        this.redrawDigits();
+      }
+    }
 
     private void But_VUVOD_Click(object sender, EventArgs e)
     {

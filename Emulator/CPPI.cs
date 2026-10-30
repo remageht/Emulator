@@ -1,4 +1,4 @@
-﻿// Decompiled with JetBrains decompiler
+// Decompiled with JetBrains decompiler
 // Type: Emulator.CPPI
 // Assembly: Emulator, Version=1.0.3072.15671, Culture=neutral, PublicKeyToken=null
 // MVID: 2D14D142-75FF-4DBB-9D56-6B1C926FB47E
@@ -268,6 +268,28 @@ namespace Emulator
         case 7:
           this.Pic8.BackColor = color;
           break;
+      }
+    }
+
+    public byte GetLampsByte()
+    {
+      byte val = 0;
+      if (this.Pic1.BackColor == Color.Red) val |= 1;
+      if (this.Pic2.BackColor == Color.Red) val |= 2;
+      if (this.Pic3.BackColor == Color.Red) val |= 4;
+      if (this.Pic4.BackColor == Color.Red) val |= 8;
+      if (this.Pic5.BackColor == Color.Red) val |= 16;
+      if (this.Pic6.BackColor == Color.Red) val |= 32;
+      if (this.Pic7.BackColor == Color.Red) val |= 64;
+      if (this.Pic8.BackColor == Color.Red) val |= 128;
+      return val;
+    }
+
+    public void SetLampsByte(byte val)
+    {
+      for (int i = 0; i < 8; i++)
+      {
+        this.setLamp(i, (val & (1 << i)) != 0);
       }
     }
 

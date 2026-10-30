@@ -1,4 +1,4 @@
-﻿// Decompiled with JetBrains decompiler
+// Decompiled with JetBrains decompiler
 // Type: Emulator.CMemory
 // Assembly: Emulator, Version=1.0.3072.15671, Culture=neutral, PublicKeyToken=null
 // MVID: 2D14D142-75FF-4DBB-9D56-6B1C926FB47E
@@ -110,6 +110,13 @@ namespace Emulator
         signifDigit = (int) this.memory[index].signifBit;
         loverDigit = (int) this.memory[index].lowerBit;
       }
+    }
+
+    public int getByteValue(int memPos)
+    {
+      int hi = 0, lo = 0;
+      this.getMemoryValue(memPos, ref hi, ref lo);
+      return (hi << 4) | lo;
     }
 
     public void setMemoryValue(int memPos, int signifDigit, int loverDigit)
