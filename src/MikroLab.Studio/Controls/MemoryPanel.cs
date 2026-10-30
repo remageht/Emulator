@@ -34,7 +34,7 @@ namespace MikroLab.Studio.Controls
 
             var addressLabel = new Label
             {
-                Text = "АДРЕСА",
+                Text = "АДРЕС",
                 ForeColor = Theme.Muted,
                 Font = Theme.HeaderFont,
                 AutoSize = true,
@@ -66,7 +66,7 @@ namespace MikroLab.Studio.Controls
 
             _followPc = new CheckBox
             {
-                Text = "Слідкувати за PC",
+                Text = "Следить за PC",
                 ForeColor = Theme.Muted,
                 Font = Theme.UiFont,
                 AutoSize = true,
@@ -188,7 +188,7 @@ namespace MikroLab.Studio.Controls
             ushort address;
             if (!TryParseAddress(_addressBox.Text, out address))
             {
-                Message?.Invoke("Некоректна адреса: " + _addressBox.Text);
+                Message?.Invoke("Некорректный адрес: " + _addressBox.Text);
                 return;
             }
             ScrollToRow(address >> 4);
@@ -286,7 +286,7 @@ namespace MikroLab.Studio.Controls
             byte value;
             if (!byte.TryParse(text, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out value))
             {
-                Message?.Invoke("Некоректне значення байта: " + e.Value);
+                Message?.Invoke("Некорректное значение байта: " + e.Value);
                 _grid.InvalidateCell(e.ColumnIndex, e.RowIndex);
                 return;
             }

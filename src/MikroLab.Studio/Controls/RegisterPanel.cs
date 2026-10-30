@@ -34,13 +34,13 @@ namespace MikroLab.Studio.Controls
             {
                 graphics.FillRectangle(background, ClientRectangle);
             }
-            Theme.DrawSectionHeader(graphics, new Rectangle(0, 0, Width, 26), "РЕГІСТРИ · КР580ВМ80А");
+            Theme.DrawSectionHeader(graphics, new Rectangle(0, 0, Width, 26), "РЕГИСТРЫ · КР580ВМ80А");
 
             if (_snapshot == null)
             {
                 TextRenderer.DrawText(
                     graphics,
-                    "Немає даних",
+                    "Нет данных",
                     Theme.UiFont,
                     new Rectangle(12, 36, Width - 24, 24),
                     Theme.Muted,
@@ -68,7 +68,7 @@ namespace MikroLab.Studio.Controls
             top += boxHeight + gap;
             DrawRegister(graphics, pad, top, boxWidth, boxHeight, "PC", _snapshot.PC.ToString("X4"), Theme.Accent);
             DrawRegister(graphics, pad + (boxWidth + gap), top, boxWidth, boxHeight, "SP", _snapshot.SP.ToString("X4"));
-            DrawRegister(graphics, pad + (boxWidth + gap) * 2, top, boxWidth, boxHeight, "Цикли", _snapshot.Cycles.ToString("N0"));
+            DrawRegister(graphics, pad + (boxWidth + gap) * 2, top, boxWidth, boxHeight, "Циклы", _snapshot.Cycles.ToString("N0"));
             DrawRegister(graphics, pad + (boxWidth + gap) * 3, top, boxWidth, boxHeight, "Стек", _snapshot.CallStackDepth.ToString());
 
             top += boxHeight + gap + 6;
@@ -107,7 +107,7 @@ namespace MikroLab.Studio.Controls
         {
             TextRenderer.DrawText(
                 graphics,
-                "ПРАПОРЦІ",
+                "ФЛАГИ",
                 Theme.HeaderFont,
                 new Rectangle(x, y, 70, 22),
                 Theme.Muted,

@@ -35,13 +35,13 @@ namespace MikroLab.Studio.Controls
             };
             var title = new Label
             {
-                Text = "ВИВІД · ЖУРНАЛ ЗБИРАННЯ ТА ПОМИЛКИ",
+                Text = "ВЫВОД · ЖУРНАЛ СБОРКИ И ОШИБКИ",
                 ForeColor = Theme.Muted,
                 Font = Theme.HeaderFont,
                 AutoSize = true,
                 Location = new Point(10, 8)
             };
-            var clearButton = Theme.MakeButton("Очистити", Theme.PanelAlt, Theme.Muted, 76, (sender, args) => Clear());
+            var clearButton = Theme.MakeButton("Очистить", Theme.PanelAlt, Theme.Muted, 76, (sender, args) => Clear());
             clearButton.Height = 22;
             clearButton.Font = Theme.UiFont;
             clearButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
@@ -88,7 +88,7 @@ namespace MikroLab.Studio.Controls
             {
                 Dock = DockStyle.Top,
                 Height = 24,
-                Text = "ПОМИЛКИ (0)",
+                Text = "ОШИБКИ (0)",
                 ForeColor = Theme.Muted,
                 Font = Theme.HeaderFont,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -162,7 +162,7 @@ namespace MikroLab.Studio.Controls
             {
                 _errors.Items.Add(item);
             }
-            _errorsHeader.Text = "ПОМИЛКИ (" + _errorItems.Count + ")";
+            _errorsHeader.Text = "ОШИБКИ (" + _errorItems.Count + ")";
         }
 
         public void ClearErrors()
@@ -186,7 +186,7 @@ namespace MikroLab.Studio.Controls
                 e.Graphics.FillRectangle(background, e.Bounds);
             }
 
-            string lineText = "Рядок " + item.Line + ":";
+            string lineText = "Строка " + item.Line + ":";
             Rectangle lineBounds = new Rectangle(e.Bounds.Left + 6, e.Bounds.Top, 66, e.Bounds.Height);
             TextRenderer.DrawText(
                 e.Graphics,
@@ -223,7 +223,7 @@ namespace MikroLab.Studio.Controls
                 Message = message;
             }
 
-            public override string ToString() => "Рядок " + Line + ": " + Message;
+            public override string ToString() => "Строка " + Line + ": " + Message;
         }
     }
 }

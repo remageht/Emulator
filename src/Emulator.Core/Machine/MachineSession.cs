@@ -26,6 +26,7 @@ namespace Emulator.Core.Machine
 
         public Machine Machine => _machine;
         public RunState State => _machine.State;
+        public Cpu.CpuProfile Profile => _machine.Profile;
 
         /// <summary>
         /// Last snapshot published by the execution loop. Safe to read from any
@@ -156,6 +157,27 @@ namespace Emulator.Core.Machine
                 _machine.Reset(kind);
             }
             PublishSnapshot();
+        }
+
+        public void SwitchProfile(Cpu.CpuProfile profile)
+        {
+            lock (_lock)
+            {
+                bool wasRunning = _isRunning;
+                if (wasRunning)
+                {
+                    _shouldStop = true;
+                }
+                _runThread?.Join(500);
+
+                _machine.SwitchProfile(profile);
+                PublishSnapshot();
+
+                if (wasRunning && !_isDisposed)
+                {
+                    Run();
+                }
+            }
         }
 
         // ---------------------------------------------------------------- breakpoints

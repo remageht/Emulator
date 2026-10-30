@@ -8,10 +8,12 @@ namespace Emulator.Core.Machine
     public sealed class Machine
     {
         public NibbleMemory Memory { get; }
-        public ICpu Cpu { get; }
+        public ICpu Cpu { get; private set; }
         public PpiState Ppi { get; }
         public DisplayState Display { get; }
         public AnalogState Analog { get; }
+
+        public CpuProfile Profile => Cpu?.Profile ?? CpuProfile.Legacy;
 
         public RunState State { get; set; } = RunState.Stopped;
 
@@ -34,6 +36,20 @@ namespace Emulator.Core.Machine
             Display = new DisplayState();
             Analog = new AnalogState();
 
+            InstantiateCpu(profile);
+        }
+
+        public void SwitchProfile(CpuProfile profile)
+        {
+            if (Cpu != null && Cpu.Profile == profile) return;
+
+            var prevSnapshot = Capture();
+            InstantiateCpu(profile);
+            Restore(prevSnapshot);
+        }
+
+        private void InstantiateCpu(CpuProfile profile)
+        {
             if (profile == CpuProfile.Extended)
             {
                 Cpu = new ExtendedCpu(

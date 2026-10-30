@@ -40,7 +40,7 @@ namespace MikroLab.Studio.Controls
                 {
                     Dock = DockStyle.Fill,
                     Height = 30,
-                    Text = "SA" + (i + 1) + "  ·  перемикач " + (i + 1),
+                    Text = "SA" + (i + 1) + "  ·  тумблер " + (i + 1),
                     Margin = new Padding(0, 0, 0, 2)
                 };
                 _tumblers[i].CheckedChanged += (sender, args) =>
@@ -66,24 +66,24 @@ namespace MikroLab.Studio.Controls
             stack.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
             int row = 0;
-            AddHeader(stack, ref row, "ПОРТИ ВВ55 · КР580ВВ55");
-            AddStackRow(stack, ref row, BuildPortRow("Порт A  ·  лампи", _portA));
-            AddStackRow(stack, ref row, BuildPortRow("Порт B  ·  перемикачі", _portB));
-            AddStackRow(stack, ref row, BuildPortRow("Порт C  ·  керування", _portC));
+            AddHeader(stack, ref row, "ПОРТЫ ВВ55 · КР580ВВ55");
+            AddStackRow(stack, ref row, BuildPortRow("Порт A  ·  лампы", _portA));
+            AddStackRow(stack, ref row, BuildPortRow("Порт B  ·  тумблеры", _portB));
+            AddStackRow(stack, ref row, BuildPortRow("Порт C  ·  управление", _portC));
 
-            AddHeader(stack, ref row, "СВІТЛОДІОДИ · ПОРТ A");
+            AddHeader(stack, ref row, "СВЕТОДИОДЫ · ПОРТ A");
             AddStackRow(stack, ref row, _lamps);
 
-            AddHeader(stack, ref row, "ПЕРЕМИКАЧІ · ПОРТ B");
+            AddHeader(stack, ref row, "ТУМБЛЕРЫ · ПОРТ B");
             for (int i = 0; i < _tumblers.Length; i++)
             {
                 AddStackRow(stack, ref row, _tumblers[i]);
             }
 
-            AddHeader(stack, ref row, "7-СЕГМЕНТНІ ІНДИКАТОРИ");
+            AddHeader(stack, ref row, "7-СЕГМЕНТНЫЕ ИНДИКАТОРЫ");
             AddStackRow(stack, ref row, _display);
 
-            AddHeader(stack, ref row, "АНАЛОГОВИЙ ВХІД · 0–10 В");
+            AddHeader(stack, ref row, "АНАЛОГОВЫЙ ВХОД · 0–10 В");
             for (int i = 0; i < 4; i++)
             {
                 AddStackRow(stack, ref row, BuildAnalogRow(i));

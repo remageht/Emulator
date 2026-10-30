@@ -27,6 +27,7 @@ namespace MikroLab.Studio
         private Panel _statusBar;
         private SplitContainer _outerSplit;
         private SplitContainer _mainSplit;
+        private SplitContainer _editorAndDevicesSplit;
         private SplitContainer _rightSplit;
 
         private CodeEditor _editor;
@@ -34,11 +35,14 @@ namespace MikroLab.Studio
         private Label _cursorLabel;
         private RegisterPanel _registers;
         private MemoryPanel _memoryPanel;
+        private CellMemoryPanel _cellMemoryPanel;
         private DevicesPanel _devicesPanel;
         private OutputPanel _output;
         private DarkTabControl _rightTabs;
         private Label _stackInfo;
         private ListBox _stackList;
+        private ComboBox _profileBox;
+        private readonly HashSet<ushort> _addressBreakpoints = new HashSet<ushort>();
 
         private Label _statusState;
         private Label _statusPc;
@@ -139,6 +143,7 @@ namespace MikroLab.Studio
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Vertical,
+                FixedPanel = FixedPanel.Panel1,
                 SplitterWidth = 6,
                 BackColor = Theme.Window,
                 Panel1MinSize = 0,
@@ -147,8 +152,29 @@ namespace MikroLab.Studio
             _mainSplit.Panel1.BackColor = Theme.Window;
             _mainSplit.Panel2.BackColor = Theme.Window;
 
-            _mainSplit.Panel1.Controls.Add(BuildEditorHost());
-            _mainSplit.Panel2.Controls.Add(BuildRightPanel());
+            _cellMemoryPanel = new CellMemoryPanel { Dock = DockStyle.Fill };
+            _cellMemoryPanel.BreakpointToggled += OnCellMemoryBreakpointToggled;
+            _cellMemoryPanel.ByteWriteRequested += OnMemoryWrite;
+            _cellMemoryPanel.SetPcRequested += OnSetPcRequested;
+            _cellMemoryPanel.Message += msg => _output.Log(msg, LogLevel.Warning);
+            _mainSplit.Panel1.Controls.Add(_cellMemoryPanel);
+
+            _editorAndDevicesSplit = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Vertical,
+                SplitterWidth = 6,
+                BackColor = Theme.Window,
+                Panel1MinSize = 0,
+                Panel2MinSize = 0
+            };
+            _editorAndDevicesSplit.Panel1.BackColor = Theme.Window;
+            _editorAndDevicesSplit.Panel2.BackColor = Theme.Window;
+
+            _editorAndDevicesSplit.Panel1.Controls.Add(BuildEditorHost());
+            _editorAndDevicesSplit.Panel2.Controls.Add(BuildRightPanel());
+            _mainSplit.Panel2.Controls.Add(_editorAndDevicesSplit);
+
             _outerSplit.Panel1.Controls.Add(_mainSplit);
 
             _output = new OutputPanel { Dock = DockStyle.Fill };
@@ -177,31 +203,31 @@ namespace MikroLab.Studio
             };
 
             var fileMenu = new ToolStripMenuItem("&Файл");
-            fileMenu.DropDownItems.Add(MakeMenuItem("Новий", () => NewDocument(), Keys.Control | Keys.N));
-            fileMenu.DropDownItems.Add(MakeMenuItem("Відкрити…", () => OpenDocument(), Keys.Control | Keys.O));
-            fileMenu.DropDownItems.Add(MakeMenuItem("Зберегти", () => SaveDocument(), Keys.Control | Keys.S));
-            fileMenu.DropDownItems.Add(MakeMenuItem("Зберегти як…", () => SaveDocumentAs(), Keys.None));
+            fileMenu.DropDownItems.Add(MakeMenuItem("Новый", () => NewDocument(), Keys.Control | Keys.N));
+            fileMenu.DropDownItems.Add(MakeMenuItem("Открыть…", () => OpenDocument(), Keys.Control | Keys.O));
+            fileMenu.DropDownItems.Add(MakeMenuItem("Сохранить", () => SaveDocument(), Keys.Control | Keys.S));
+            fileMenu.DropDownItems.Add(MakeMenuItem("Сохранить как…", () => SaveDocumentAs(), Keys.None));
             fileMenu.DropDownItems.Add(new ToolStripSeparator());
-            fileMenu.DropDownItems.Add(MakeMenuItem("Вихід", () => Close(), Keys.None));
+            fileMenu.DropDownItems.Add(MakeMenuItem("Выход", () => Close(), Keys.None));
 
-            var runMenu = new ToolStripMenuItem("&Виконання");
-            runMenu.DropDownItems.Add(MakeMenuItem("Зібрати", () => AssembleProgram(), Keys.None, "F7"));
+            var runMenu = new ToolStripMenuItem("&Выполнение");
+            runMenu.DropDownItems.Add(MakeMenuItem("Собрать", () => AssembleProgram(), Keys.None, "F7"));
             runMenu.DropDownItems.Add(MakeMenuItem("Пуск", () => RunProgram(), Keys.None, "F5"));
             runMenu.DropDownItems.Add(MakeMenuItem("Пауза", () => PauseProgram(), Keys.None, "F6"));
-            runMenu.DropDownItems.Add(MakeMenuItem("Крок", () => StepProgram(), Keys.None, "F10"));
-            runMenu.DropDownItems.Add(MakeMenuItem("Скидання", () => ResetProgram(), Keys.None, "Ctrl+R"));
+            runMenu.DropDownItems.Add(MakeMenuItem("Шаг", () => StepProgram(), Keys.None, "F10"));
+            runMenu.DropDownItems.Add(MakeMenuItem("Сброс", () => ResetProgram(), Keys.None, "Ctrl+R"));
             runMenu.DropDownItems.Add(new ToolStripSeparator());
-            runMenu.DropDownItems.Add(MakeMenuItem("Точка зупинки", () => ToggleBreakpoint(_editor.CaretLine), Keys.None, "F9"));
-            runMenu.DropDownItems.Add(MakeMenuItem("До поточного PC", () => GoToProgramCounter(), Keys.None));
+            runMenu.DropDownItems.Add(MakeMenuItem("Точка останова", () => ToggleBreakpoint(_editor.CaretLine), Keys.None, "F9"));
+            runMenu.DropDownItems.Add(MakeMenuItem("К текущему PC", () => GoToProgramCounter(), Keys.None));
 
-            var viewMenu = new ToolStripMenuItem("&Вигляд");
-            viewMenu.DropDownItems.Add(MakeMenuItem("Пам'ять", () => SelectRightTab(0), Keys.None));
-            viewMenu.DropDownItems.Add(MakeMenuItem("Пристрої", () => SelectRightTab(1), Keys.None));
+            var viewMenu = new ToolStripMenuItem("&Вид");
+            viewMenu.DropDownItems.Add(MakeMenuItem("Память", () => SelectRightTab(0), Keys.None));
+            viewMenu.DropDownItems.Add(MakeMenuItem("Устройства", () => SelectRightTab(1), Keys.None));
             viewMenu.DropDownItems.Add(MakeMenuItem("Стек", () => SelectRightTab(2), Keys.None));
 
-            var helpMenu = new ToolStripMenuItem("&Довідка");
-            helpMenu.DropDownItems.Add(MakeMenuItem("Гарячі клавіші", ShowHotkeys, Keys.None));
-            helpMenu.DropDownItems.Add(MakeMenuItem("Про програму", ShowAbout, Keys.None));
+            var helpMenu = new ToolStripMenuItem("&Справка");
+            helpMenu.DropDownItems.Add(MakeMenuItem("Горячие клавиши", ShowHotkeys, Keys.None));
+            helpMenu.DropDownItems.Add(MakeMenuItem("О программе", ShowAbout, Keys.None));
 
             menu.Items.Add(fileMenu);
             menu.Items.Add(runMenu);
@@ -248,26 +274,26 @@ namespace MikroLab.Studio
 
             _btnRun = Theme.MakeButton("▶  Пуск", Color.FromArgb(46, 102, 55), Color.White, 100, (sender, args) => RunProgram());
             _btnPause = Theme.MakeOutlineButton("⏸  Пауза", 96, (sender, args) => PauseProgram());
-            _btnStep = Theme.MakeOutlineButton("⏭  Крок", 92, (sender, args) => StepProgram());
-            _btnReset = Theme.MakeOutlineButton("⏹  Скидання", 108, (sender, args) => ResetProgram());
-            _btnAssemble = Theme.MakeButton("⚙  Зібрати", Theme.AccentDark, Color.White, 108, (sender, args) => AssembleProgram());
+            _btnStep = Theme.MakeOutlineButton("⏭  Шаг", 92, (sender, args) => StepProgram());
+            _btnReset = Theme.MakeOutlineButton("⏹  Сброс", 108, (sender, args) => ResetProgram());
+            _btnAssemble = Theme.MakeButton("⚙  Собрать", Theme.AccentDark, Color.White, 108, (sender, args) => AssembleProgram());
 
             _toolTip.SetToolTip(_btnRun, "Пуск (F5)");
             _toolTip.SetToolTip(_btnPause, "Пауза (F6)");
-            _toolTip.SetToolTip(_btnStep, "Один крок (F10)");
-            _toolTip.SetToolTip(_btnReset, "Скидання процесора (Ctrl+R)");
-            _toolTip.SetToolTip(_btnAssemble, "Зібрати та завантажити (F7)");
+            _toolTip.SetToolTip(_btnStep, "Один шаг (F10)");
+            _toolTip.SetToolTip(_btnReset, "Сброс процессора (Ctrl+R)");
+            _toolTip.SetToolTip(_btnAssemble, "Собрать и загрузить (F7)");
 
-            var newButton = Theme.MakeOutlineButton("Новий", 76, (sender, args) => NewDocument());
-            var openButton = Theme.MakeOutlineButton("Відкрити", 88, (sender, args) => OpenDocument());
-            var saveButton = Theme.MakeOutlineButton("Зберегти", 88, (sender, args) => SaveDocument());
-            _toolTip.SetToolTip(newButton, "Новий файл (Ctrl+N)");
-            _toolTip.SetToolTip(openButton, "Відкрити .asm (Ctrl+O)");
-            _toolTip.SetToolTip(saveButton, "Зберегти .asm (Ctrl+S)");
+            var newButton = Theme.MakeOutlineButton("Новый", 76, (sender, args) => NewDocument());
+            var openButton = Theme.MakeOutlineButton("Открыть", 88, (sender, args) => OpenDocument());
+            var saveButton = Theme.MakeOutlineButton("Сохранить", 88, (sender, args) => SaveDocument());
+            _toolTip.SetToolTip(newButton, "Новый файл (Ctrl+N)");
+            _toolTip.SetToolTip(openButton, "Открыть .asm (Ctrl+O)");
+            _toolTip.SetToolTip(saveButton, "Сохранить .asm (Ctrl+S)");
 
             var sampleLabel = new Label
             {
-                Text = "Приклад:",
+                Text = "Пример:",
                 ForeColor = Theme.Muted,
                 Font = Theme.UiFont,
                 AutoSize = false,
@@ -279,7 +305,7 @@ namespace MikroLab.Studio
             };
             _sampleBox = new ComboBox
             {
-                Width = 186,
+                Width = 220,
                 DropDownStyle = ComboBoxStyle.DropDownList,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Theme.PanelAlt,
@@ -292,6 +318,33 @@ namespace MikroLab.Studio
                 _sampleBox.Items.Add(sample);
             }
             _sampleBox.SelectedIndexChanged += OnSampleSelected;
+
+            var profileLabel = new Label
+            {
+                Text = "Профиль:",
+                ForeColor = Theme.Muted,
+                Font = Theme.UiFont,
+                AutoSize = false,
+                Width = 60,
+                Height = 32,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Margin = new Padding(8, 0, 4, 0),
+                BackColor = Color.Transparent
+            };
+            _profileBox = new ComboBox
+            {
+                Width = 150,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Theme.PanelAlt,
+                ForeColor = Theme.Text,
+                Font = Theme.UiFont,
+                Margin = new Padding(0, 5, 0, 0)
+            };
+            _profileBox.Items.Add("Legacy (Лаб. 1–4)");
+            _profileBox.Items.Add("Newest (Лаб. 5+)");
+            _profileBox.SelectedIndex = _session.Profile == CpuProfile.Legacy ? 0 : 1;
+            _profileBox.SelectedIndexChanged += OnProfileSelected;
 
             flow.Controls.Add(_btnRun);
             flow.Controls.Add(_btnPause);
@@ -306,6 +359,9 @@ namespace MikroLab.Studio
             flow.Controls.Add(MakeSeparator());
             flow.Controls.Add(sampleLabel);
             flow.Controls.Add(_sampleBox);
+            flow.Controls.Add(MakeSeparator());
+            flow.Controls.Add(profileLabel);
+            flow.Controls.Add(_profileBox);
 
             toolbar.Controls.Add(flow);
             return toolbar;
@@ -382,7 +438,7 @@ namespace MikroLab.Studio
             };
             _editorFileLabel = new Label
             {
-                Text = "ПРОГРАМА",
+                Text = "ПРОГРАММА",
                 Font = Theme.HeaderFont,
                 ForeColor = Theme.Muted,
                 AutoSize = true,
@@ -391,7 +447,7 @@ namespace MikroLab.Studio
             };
             _cursorLabel = new Label
             {
-                Text = "Рядок 1, кол. 1",
+                Text = "Строка 1, кол. 1",
                 Font = Theme.MonoSmall,
                 ForeColor = Theme.Muted,
                 AutoSize = true,
@@ -435,7 +491,15 @@ namespace MikroLab.Studio
 
             _rightTabs = new DarkTabControl { Dock = DockStyle.Fill };
 
-            var memoryPage = new TabPage("Пам'ять")
+            var devicesPage = new TabPage("Устройства")
+            {
+                BackColor = Theme.Panel,
+                Padding = new Padding(0)
+            };
+            _devicesPanel = new DevicesPanel { Dock = DockStyle.Fill };
+            devicesPage.Controls.Add(_devicesPanel);
+
+            var memoryPage = new TabPage("Дамп (16 байт)")
             {
                 BackColor = Theme.Panel,
                 Padding = new Padding(0)
@@ -445,14 +509,6 @@ namespace MikroLab.Studio
             _memoryPanel.Message += message => _output.Log(message, LogLevel.Warning);
             memoryPage.Controls.Add(_memoryPanel);
 
-            var devicesPage = new TabPage("Пристрої")
-            {
-                BackColor = Theme.Panel,
-                Padding = new Padding(0)
-            };
-            _devicesPanel = new DevicesPanel { Dock = DockStyle.Fill };
-            devicesPage.Controls.Add(_devicesPanel);
-
             var stackPage = new TabPage("Стек")
             {
                 BackColor = Theme.Panel,
@@ -460,8 +516,8 @@ namespace MikroLab.Studio
             };
             stackPage.Controls.Add(BuildStackPanel());
 
-            _rightTabs.TabPages.Add(memoryPage);
             _rightTabs.TabPages.Add(devicesPage);
+            _rightTabs.TabPages.Add(memoryPage);
             _rightTabs.TabPages.Add(stackPage);
             _rightTabs.SelectedIndex = 0;
             _rightSplit.Panel2.Controls.Add(_rightTabs);
@@ -476,7 +532,7 @@ namespace MikroLab.Studio
             {
                 Dock = DockStyle.Top,
                 Height = 28,
-                Text = "ЛАНЦЮГ ВИКЛИКІВ · CALL / RET",
+                Text = "ЦЕПОЧКА ВЫЗОВОВ · CALL / RET",
                 Font = Theme.HeaderFont,
                 ForeColor = Theme.Muted,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -488,7 +544,7 @@ namespace MikroLab.Studio
             {
                 Dock = DockStyle.Top,
                 Height = 28,
-                Text = "Глибина: 0",
+                Text = "Глубина: 0",
                 Font = Theme.MonoSmall,
                 ForeColor = Theme.Muted,
                 TextAlign = ContentAlignment.MiddleLeft,
@@ -531,22 +587,38 @@ namespace MikroLab.Studio
             {
                 if (_mainSplit.Width >= 1000)
                 {
-                    _mainSplit.Panel1MinSize = 520;
-                    _mainSplit.Panel2MinSize = 420;
-                    _mainSplit.SplitterDistance = Math.Max(520, (int)(_mainSplit.Width * 0.57));
+                    _mainSplit.Panel1MinSize = 240;
+                    _mainSplit.Panel2MinSize = 600;
+                    _mainSplit.SplitterDistance = 330;
                 }
                 else
                 {
                     _mainSplit.Panel1MinSize = 0;
                     _mainSplit.Panel2MinSize = 0;
-                    _mainSplit.SplitterDistance = Math.Max(200, (int)(_mainSplit.Width * 0.55));
+                    _mainSplit.SplitterDistance = Math.Max(180, (int)(_mainSplit.Width * 0.28));
                 }
             }
-            catch (InvalidOperationException)
+            catch (Exception)
             {
                 // Splitter constraints differ across DPI settings; defaults are fine.
             }
-            catch (ArgumentOutOfRangeException)
+
+            try
+            {
+                if (_editorAndDevicesSplit.Width >= 700)
+                {
+                    _editorAndDevicesSplit.Panel1MinSize = 340;
+                    _editorAndDevicesSplit.Panel2MinSize = 320;
+                    _editorAndDevicesSplit.SplitterDistance = Math.Max(340, (int)(_editorAndDevicesSplit.Width * 0.55));
+                }
+                else
+                {
+                    _editorAndDevicesSplit.Panel1MinSize = 0;
+                    _editorAndDevicesSplit.Panel2MinSize = 0;
+                    _editorAndDevicesSplit.SplitterDistance = Math.Max(200, _editorAndDevicesSplit.Width / 2);
+                }
+            }
+            catch (Exception)
             {
                 // Splitter constraints differ across DPI settings; defaults are fine.
             }
@@ -599,10 +671,10 @@ namespace MikroLab.Studio
         private void WireSession()
         {
             _session.ExecutionError += message =>
-                SafeUi(() => _output.Log("Помилка виконання: " + message, LogLevel.Error));
+                SafeUi(() => _output.Log("Ошибка выполнения: " + message, LogLevel.Error));
             _session.UnsupportedCommand += (pc, opcode) =>
                 SafeUi(() => _output.Log(
-                    "Непідтримана команда " + opcode.ToString("X2") + "h за адресою " + pc.ToString("X4") + "h",
+                    "Неподдерживаемая команда " + opcode.ToString("X2") + "h по адресу " + pc.ToString("X4") + "h",
                     LogLevel.Error));
             _output.ErrorActivated += line =>
             {
@@ -641,9 +713,10 @@ namespace MikroLab.Studio
             _devicesPanel.UpdateSnapshot(snapshot);
             _memoryPanel.AllowEditing = _session.State != RunState.Running;
             _memoryPanel.UpdateSnapshot(snapshot);
+            _cellMemoryPanel.UpdateSnapshot(snapshot, _session.GetBreakpoints());
 
             _statusPc.Text = "PC  " + snapshot.PC.ToString("X4") + "h";
-            _statusCycles.Text = "Цикли  " + snapshot.Cycles.ToString("N0");
+            _statusCycles.Text = "Такты  " + snapshot.Cycles.ToString("N0");
 
             UpdateExecutionLine(snapshot.PC);
             UpdateRunState();
@@ -658,7 +731,7 @@ namespace MikroLab.Studio
             {
                 if (state == RunState.Running)
                 {
-                    _output.Log("Виконання запущено · PC=" + CurrentProgramCounter().ToString("X4") + "h");
+                    _output.Log("Выполнение запущено · PC=" + CurrentProgramCounter().ToString("X4") + "h");
                 }
                 else if (state == RunState.Paused && _lastRunState == RunState.Running && !_session.IsPausedAtBreakpoint)
                 {
@@ -666,7 +739,7 @@ namespace MikroLab.Studio
                 }
                 else if (state == RunState.Halted)
                 {
-                    _output.Log("HLT · процесор зупинено на " + CurrentProgramCounter().ToString("X4") + "h", LogLevel.Warning);
+                    _output.Log("HLT · процессор остановлен на " + CurrentProgramCounter().ToString("X4") + "h", LogLevel.Warning);
                 }
                 _lastRunState = state;
             }
@@ -677,7 +750,7 @@ namespace MikroLab.Studio
                 if (_lastBreakpointLogged != address)
                 {
                     _lastBreakpointLogged = address;
-                    _output.Log("Точка зупинки · " + address.ToString("X4") + "h", LogLevel.Warning);
+                    _output.Log("Точка останова · " + address.ToString("X4") + "h", LogLevel.Warning);
                 }
             }
             else if (!_session.IsPausedAtBreakpoint)
@@ -689,7 +762,7 @@ namespace MikroLab.Studio
             Color color;
             if (_session.IsPausedAtBreakpoint && _session.BreakpointAddress.HasValue)
             {
-                text = "● ТОЧКА ЗУПИНКИ " + _session.BreakpointAddress.Value.ToString("X4") + "h";
+                text = "● ТОЧКА ОСТАНОВА " + _session.BreakpointAddress.Value.ToString("X4") + "h";
                 color = Theme.Yellow;
             }
             else
@@ -697,7 +770,7 @@ namespace MikroLab.Studio
                 switch (state)
                 {
                     case RunState.Running:
-                        text = "● ВИКОНУЄТЬСЯ";
+                        text = "● ВЫПОЛНЯЕТСЯ";
                         color = Theme.Green;
                         break;
                     case RunState.Paused:
@@ -709,7 +782,7 @@ namespace MikroLab.Studio
                         color = Theme.Red;
                         break;
                     default:
-                        text = "● ЗУПИНЕНО";
+                        text = "● ОСТАНОВЛЕНО";
                         color = Theme.Muted;
                         break;
                 }
@@ -766,7 +839,7 @@ namespace MikroLab.Studio
                 _stackList.Items.Clear();
                 if (stack.Length == 0)
                 {
-                    _stackList.Items.Add("— стек порожній —");
+                    _stackList.Items.Add("— стек пуст —");
                 }
                 else
                 {
@@ -804,8 +877,8 @@ namespace MikroLab.Studio
             if (!result.Success)
             {
                 _statusMessage.ForeColor = Theme.Red;
-                _statusMessage.Text = "Помилок: " + result.Errors.Count;
-                _output.Log("Збирання не вдалося · помилок: " + result.Errors.Count, LogLevel.Error);
+                _statusMessage.Text = "Ошибок: " + result.Errors.Count;
+                _output.Log("Сборка не удалась · ошибок: " + result.Errors.Count, LogLevel.Error);
                 if (result.Errors.Count > 0)
                 {
                     _editor.GoToLine(result.Errors[0].LineNumber);
@@ -857,10 +930,10 @@ namespace MikroLab.Studio
                 : "—";
 
             _output.Log(
-                "Зібрано: " + bytes + " байт · " + range + " · символів: " + result.Symbols.Count,
+                "Собрано: " + bytes + " байт · " + range + " · символов: " + result.Symbols.Count,
                 LogLevel.Success);
             _statusMessage.ForeColor = Theme.Muted;
-            _statusMessage.Text = "Зібрано · " + bytes + " байт";
+            _statusMessage.Text = "Собрано · " + bytes + " байт";
             _editor.SetExecutionLine(FindLineForAddress(result.StartAddress));
             UpdateTitle();
             UpdateButtons();
@@ -899,7 +972,7 @@ namespace MikroLab.Studio
         {
             if (_session.State == RunState.Halted)
             {
-                _output.Log("Процесор зупинено (HLT). Спочатку виконайте скидання.", LogLevel.Warning);
+                _output.Log("Процессор остановлен (HLT). Сначала выполните сброс.", LogLevel.Warning);
                 return;
             }
 
@@ -926,7 +999,7 @@ namespace MikroLab.Studio
         {
             if (_session.State == RunState.Halted)
             {
-                _output.Log("Процесор зупинено (HLT). Спочатку виконайте скидання.", LogLevel.Warning);
+                _output.Log("Процессор остановлен (HLT). Сначала выполните сброс.", LogLevel.Warning);
                 return;
             }
 
@@ -944,7 +1017,7 @@ namespace MikroLab.Studio
             ushort start = _lastResult != null ? _lastResult.StartAddress : (ushort)0x8000;
             _session.WithMachine(machine => machine.Cpu.State.PC = start);
             _lastBreakpointLogged = -1;
-            _output.Log("Скидання · PC=" + start.ToString("X4") + "h");
+            _output.Log("Сброс · PC=" + start.ToString("X4") + "h");
             _editor.SetExecutionLine(FindLineForAddress(start));
         }
 
@@ -955,12 +1028,12 @@ namespace MikroLab.Studio
             if (_breakpointLines.Contains(line))
             {
                 _breakpointLines.Remove(line);
-                _output.Log("Точку зупинки знято · рядок " + line);
+                _output.Log("Точка останова снята · строка " + line);
             }
             else
             {
                 _breakpointLines.Add(line);
-                _output.Log("Точка зупинки · рядок " + line);
+                _output.Log("Точка останова · строка " + line);
             }
 
             _editor.SetBreakpointLines(_breakpointLines);
@@ -969,7 +1042,7 @@ namespace MikroLab.Studio
 
         private void ApplyBreakpoints()
         {
-            var addresses = new List<ushort>();
+            var addresses = new HashSet<ushort>(_addressBreakpoints);
             foreach (int line in _breakpointLines)
             {
                 ushort address;
@@ -980,8 +1053,56 @@ namespace MikroLab.Studio
             }
 
             _session.SetBreakpoints(addresses);
-            _statusBreak.Text = "Точки зупинки: " + addresses.Count;
+            _statusBreak.Text = "Точки останова: " + addresses.Count;
             _statusBreak.ForeColor = addresses.Count > 0 ? Theme.Yellow : Theme.Muted;
+        }
+
+        private void OnCellMemoryBreakpointToggled(ushort address)
+        {
+            if (_addressBreakpoints.Contains(address))
+            {
+                _addressBreakpoints.Remove(address);
+                _output.Log("Точка останова снята · адрес " + address.ToString("X4") + "h");
+            }
+            else
+            {
+                _addressBreakpoints.Add(address);
+                _output.Log("Точка останова · адрес " + address.ToString("X4") + "h");
+            }
+
+            int? line = FindLineForAddress(address);
+            if (line.HasValue)
+            {
+                if (_addressBreakpoints.Contains(address))
+                    _breakpointLines.Add(line.Value);
+                else
+                    _breakpointLines.Remove(line.Value);
+
+                _editor.SetBreakpointLines(_breakpointLines);
+            }
+
+            ApplyBreakpoints();
+        }
+
+        private void OnSetPcRequested(ushort address)
+        {
+            _session.WithMachine(machine => machine.Cpu.State.PC = address);
+            _output.Log("Установлен PC = " + address.ToString("X4") + "h");
+            _statusMessage.Text = "PC = " + address.ToString("X4") + "h";
+            _editor.SetExecutionLine(FindLineForAddress(address));
+        }
+
+        private void OnProfileSelected(object sender, EventArgs e)
+        {
+            if (_profileBox == null) return;
+            var target = _profileBox.SelectedIndex == 0 ? CpuProfile.Legacy : CpuProfile.Extended;
+            if (_session.Profile != target)
+            {
+                _session.SwitchProfile(target);
+                string desc = target == CpuProfile.Legacy ? "Legacy (Лабораторные 1-4)" : "Newest / Extended (Лабораторная 5+)";
+                _output.Log("Профиль процессора переключен на: " + desc, LogLevel.Info);
+                _statusMessage.Text = "Профиль: " + (target == CpuProfile.Legacy ? "Legacy" : "Newest");
+            }
         }
 
         private void GoToProgramCounter()
@@ -993,6 +1114,7 @@ namespace MikroLab.Studio
                 _editor.GoToLine(line.Value);
             }
             _memoryPanel.SetAddress(pc);
+            _cellMemoryPanel.FollowAddress(pc);
             _statusMessage.Text = "PC = " + pc.ToString("X4") + "h";
         }
 
@@ -1000,7 +1122,7 @@ namespace MikroLab.Studio
         {
             if (_session.State == RunState.Running)
             {
-                _output.Log("Зупиніть виконання, щоб редагувати пам'ять.", LogLevel.Warning);
+                _output.Log("Остановите выполнение, чтобы редактировать память.", LogLevel.Warning);
                 return;
             }
             _session.WithMachine(machine => machine.Memory.WriteByte(address, value));
@@ -1025,7 +1147,7 @@ namespace MikroLab.Studio
             _loadingSample = true;
             _sampleBox.SelectedIndex = -1;
             _loadingSample = false;
-            _output.Log("Новий проєкт");
+            _output.Log("Новый проект");
             AssembleProgram();
             _dirty = false;
             UpdateTitle();
@@ -1037,8 +1159,8 @@ namespace MikroLab.Studio
 
             using (var dialog = new OpenFileDialog())
             {
-                dialog.Title = "Відкрити програму";
-                dialog.Filter = "Асемблер KR580VM80A (*.asm;*.a80)|*.asm;*.a80|Усі файли (*.*)|*.*";
+                dialog.Title = "Открыть программу";
+                dialog.Filter = "Ассемблер KR580VM80A (*.asm;*.a80)|*.asm;*.a80|Все файлы (*.*)|*.*";
                 if (dialog.ShowDialog(this) != DialogResult.OK) return;
 
                 try
@@ -1051,12 +1173,12 @@ namespace MikroLab.Studio
                     _loadingSample = false;
                     _dirty = false;
                     UpdateTitle();
-                    _output.Log("Відкрито: " + dialog.FileName, LogLevel.Success);
+                    _output.Log("Открыто: " + dialog.FileName, LogLevel.Success);
                     AssembleProgram();
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(this, "Не вдалося відкрити файл:\n" + ex.Message,
+                    MessageBox.Show(this, "Не удалось открыть файл:\n" + ex.Message,
                         "MikroLab Studio", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
@@ -1074,12 +1196,12 @@ namespace MikroLab.Studio
                 File.WriteAllText(_filePath, _editor.Code, new UTF8Encoding(false));
                 _dirty = false;
                 UpdateTitle();
-                _output.Log("Збережено: " + _filePath, LogLevel.Success);
+                _output.Log("Сохранено: " + _filePath, LogLevel.Success);
                 return true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "Не вдалося зберегти файл:\n" + ex.Message,
+                MessageBox.Show(this, "Не удалось сохранить файл:\n" + ex.Message,
                     "MikroLab Studio", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
             }
@@ -1089,8 +1211,8 @@ namespace MikroLab.Studio
         {
             using (var dialog = new SaveFileDialog())
             {
-                dialog.Title = "Зберегти програму";
-                dialog.Filter = "Асемблер KR580VM80A (*.asm)|*.asm|Усі файли (*.*)|*.*";
+                dialog.Title = "Сохранить программу";
+                dialog.Filter = "Ассемблер KR580VM80A (*.asm)|*.asm|Все файлы (*.*)|*.*";
                 dialog.FileName = _filePath != null ? Path.GetFileName(_filePath) : "program.asm";
                 if (dialog.ShowDialog(this) != DialogResult.OK) return false;
 
@@ -1104,12 +1226,22 @@ namespace MikroLab.Studio
             if (index < 0 || index >= SamplePrograms.All.Length) return;
 
             SampleProgram sample = SamplePrograms.All[index];
+
+            if (_profileBox != null)
+            {
+                int targetProfileIndex = sample.RecommendedProfile == CpuProfile.Legacy ? 0 : 1;
+                if (_profileBox.SelectedIndex != targetProfileIndex)
+                {
+                    _profileBox.SelectedIndex = targetProfileIndex;
+                }
+            }
+
             LoadCode(sample.Code, true);
             _filePath = null;
             _loadingSample = true;
             _sampleBox.SelectedIndex = index;
             _loadingSample = false;
-            _output.Log("Приклад: " + sample.Name);
+            _output.Log("Пример: " + sample.Name);
             AssembleProgram();
             _dirty = false;
             UpdateTitle();
@@ -1130,6 +1262,7 @@ namespace MikroLab.Studio
             if (clearBreakpoints)
             {
                 _breakpointLines.Clear();
+                _addressBreakpoints.Clear();
                 _editor.SetBreakpointLines(_breakpointLines);
             }
 
@@ -1151,7 +1284,7 @@ namespace MikroLab.Studio
             UpdateTitle();
             _editor.SetExecutionLine(null);
             _statusMessage.ForeColor = Theme.Muted;
-            _statusMessage.Text = "Є зміни · зберіть програму (F7)";
+            _statusMessage.Text = "Есть изменения · соберите программу (F7)";
         }
 
         private void OnSampleSelected(object sender, EventArgs e)
@@ -1177,7 +1310,7 @@ namespace MikroLab.Studio
 
             DialogResult result = MessageBox.Show(
                 this,
-                "У програмі є незбережені зміни. Зберегти їх?",
+                "В программе есть несохраненные изменения. Сохранить их?",
                 "MikroLab Studio",
                 MessageBoxButtons.YesNoCancel,
                 MessageBoxIcon.Question);
@@ -1189,18 +1322,18 @@ namespace MikroLab.Studio
 
         private void UpdateTitle()
         {
-            string name = _filePath == null ? "Без назви" : Path.GetFileName(_filePath);
+            string name = _filePath == null ? "Без названия" : Path.GetFileName(_filePath);
             Text = (_dirty ? "● " : string.Empty) + name + " — MikroLab Studio";
             if (_editorFileLabel != null)
             {
-                _editorFileLabel.Text = "ПРОГРАМА · " + name + (_dirty ? "  ·  змінено" : string.Empty);
+                _editorFileLabel.Text = "ПРОГРАММА · " + name + (_dirty ? "  ·  изменено" : string.Empty);
             }
         }
 
         private void UpdateCursorLabel()
         {
-            _cursorLabel.Text = "Рядок " + _editor.CaretLine + ", кол. " + _editor.CaretColumn;
-            _statusCursor.Text = "Рядок " + _editor.CaretLine + ", кол. " + _editor.CaretColumn;
+            _cursorLabel.Text = "Строка " + _editor.CaretLine + ", кол. " + _editor.CaretColumn;
+            _statusCursor.Text = "Строка " + _editor.CaretLine + ", кол. " + _editor.CaretColumn;
         }
 
         // ------------------------------------------------------------------ dialogs
@@ -1211,13 +1344,13 @@ namespace MikroLab.Studio
                 this,
                 "F5  ·  Пуск\n" +
                 "F6  ·  Пауза\n" +
-                "F7  ·  Зібрати та завантажити\n" +
-                "F9  ·  Точка зупинки на поточному рядку\n" +
-                "F10 ·  Один крок\n" +
-                "Ctrl+R · Скидання\n" +
+                "F7  ·  Собрать и загрузить\n" +
+                "F9  ·  Точка останова на текущей строке\n" +
+                "F10 ·  Один шаг\n" +
+                "Ctrl+R · Сброс\n" +
                 "Ctrl+N / Ctrl+O / Ctrl+S · Файл\n\n" +
-                "Клік по лівому полю редактора також ставить точку зупинки.",
-                "Гарячі клавіші",
+                "Клик по левому полю редактора также ставит точку останова.",
+                "Горячие клавиши",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
         }
@@ -1227,13 +1360,13 @@ namespace MikroLab.Studio
             MessageBox.Show(
                 this,
                 "MikroLab Studio 1.0\n" +
-                "Самостійне середовище розробки для КР580ВМ80А / Intel 8080.\n\n" +
+                "Самостоятельная среда разработки для КР580ВМ80А / Intel 8080.\n\n" +
                 "Ядро: Emulator.Core (headless, без WinForms).\n" +
-                "Повний набір команд i8080, двопрохідний асемблер,\n" +
-                "точки зупинки, інспектор пам'яті та панель пристроїв.\n\n" +
-                "Ліцензія: GNU GPL v3.\n" +
-                "Ідейне продовження відкритого емулятора Mikrolab.",
-                "Про програму",
+                "Полный набор команд i8080, двухпроходный ассемблер,\n" +
+                "точки останова, инспектор памяти и панель устройств.\n\n" +
+                "Лицензия: GNU GPL v3.\n" +
+                "Идейное продолжение открытого эмулятора Mikrolab.",
+                "О программе",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
         }

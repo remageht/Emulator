@@ -17,7 +17,7 @@ namespace MikroLab.Studio
             {
                 MessageBox.Show(
                     args.Exception.ToString(),
-                    "MikroLab Studio — непередбачена помилка",
+                    "MikroLab Studio — непредвиденная ошибка",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             };
@@ -27,7 +27,7 @@ namespace MikroLab.Studio
                 {
                     MessageBox.Show(
                         ex.ToString(),
-                        "MikroLab Studio — критична помилка",
+                        "MikroLab Studio — критическая ошибка",
                         MessageBoxButtons.OK,
                         MessageBoxIcon.Error);
                 }
