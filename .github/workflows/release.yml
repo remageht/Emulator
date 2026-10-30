@@ -48,7 +48,7 @@ jobs:
         run: dotnet run --project tests/Emulator.Tests/Emulator.Tests.csproj -c Release
 
       - name: Сборка CLI
-        run: dotnet build src/MikroLab.Cli/MikroLab.Cli.csproj -c Release
+        run: dotnet build src/MikroLab.Cli/MikroLab.Cli.csproj -c Release -r win-x64 --source https://api.nuget.org/v3/index.json
 
       - name: Проверка команд CLI
         shell: pwsh
@@ -104,6 +104,7 @@ jobs:
           -c Release
           -r ${{ matrix.rid }}
           --self-contained true
+          --source https://api.nuget.org/v3/index.json
           -p:PublishSingleFile=true
           -p:DebugType=None
           -p:DebugSymbols=false
@@ -116,6 +117,7 @@ jobs:
           -c Release
           -r ${{ matrix.rid }}
           --self-contained true
+          --source https://api.nuget.org/v3/index.json
           -p:PublishSingleFile=true
           -p:DebugType=None
           -p:DebugSymbols=false
@@ -128,6 +130,7 @@ jobs:
           -c Release
           -r ${{ matrix.rid }}
           --self-contained true
+          --source https://api.nuget.org/v3/index.json
           -p:PublishSingleFile=true
           -p:DebugType=None
           -p:DebugSymbols=false
