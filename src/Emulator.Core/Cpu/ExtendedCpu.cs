@@ -592,7 +592,7 @@ namespace Emulator.Core.Cpu
                 if (_ppi != null)
                     _ppi.Lamps = value;
             }
-            else if (addr == MemoryMap.PortControlWord)
+            else if (addr == MemoryMap.PortControlWord || addr == MemoryMap.PortControlWordFb)
             {
                 if (_ppi != null)
                     _ppi.ControlWord = value;

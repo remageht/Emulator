@@ -1,0 +1,242 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Тег релиза (например, v1.0.0-beta.1)'
+        required: true
+        default: 'v1.0.0-beta.1'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    name: Определение версии
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Определение тега
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          fi
+
+  test:
+    name: Тесты и проверка CLI
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Запуск тестов
+        run: dotnet run --project tests/Emulator.Tests/Emulator.Tests.csproj -c Release
+
+      - name: Сборка CLI
+        run: dotnet build src/MikroLab.Cli/MikroLab.Cli.csproj -c Release
+
+      - name: Проверка команд CLI
+        shell: pwsh
+        run: |
+          $exe = "src/MikroLab.Cli/bin/Release/net10.0/win-x64/mikrolab.exe"
+          & $exe info
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          1..5 | ForEach-Object {
+            & $exe lab $_
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
+
+  build:
+    name: Сборка (${{ matrix.rid }})
+    needs: [test, prepare]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            rid: win-x64
+            kind: windows
+          - os: ubuntu-latest
+            rid: linux-x64
+            kind: cli
+          - os: ubuntu-latest
+            rid: linux-arm64
+            kind: cli
+          - os: macos-latest
+            rid: osx-x64
+            kind: cli
+          - os: macos-latest
+            rid: osx-arm64
+            kind: cli
+
+    env:
+      VERSION: ${{ needs.prepare.outputs.tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Публикация Studio (Windows)
+        if: matrix.kind == 'windows'
+        run: >
+          dotnet publish src/MikroLab.Studio/MikroLab.Studio.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o publish/studio
+
+      - name: Публикация CLI (Windows)
+        if: matrix.kind == 'windows'
+        run: >
+          dotnet publish src/MikroLab.Cli/MikroLab.Cli.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o publish/cli
+
+      - name: Публикация CLI (Linux/macOS)
+        if: matrix.kind == 'cli'
+        run: >
+          dotnet publish src/MikroLab.Cli/MikroLab.Cli.csproj
+          -c Release
+          -r ${{ matrix.rid }}
+          --self-contained true
+          -p:PublishSingleFile=true
+          -p:DebugType=None
+          -p:DebugSymbols=false
+          -o "publish/mikrolab-${{ env.VERSION }}-${{ matrix.rid }}"
+
+      - name: Упаковка Windows (GUI + CLI)
+        if: matrix.kind == 'windows'
+        shell: pwsh
+        run: |
+          $folder = "publish/MikroLab.Studio-$env:VERSION-win-x64"
+          New-Item -ItemType Directory -Force -Path $folder | Out-Null
+          Copy-Item "publish/studio/MikroLab.Studio.exe" $folder
+          Copy-Item "publish/cli/mikrolab.exe" $folder
+          Copy-Item "LICENSE" $folder
+          Copy-Item "README.md" $folder
+          Compress-Archive -Path "$folder/*" -DestinationPath "$folder.zip"
+
+      - name: Упаковка Linux/macOS
+        if: matrix.kind == 'cli'
+        shell: bash
+        run: |
+          folder="publish/mikrolab-${{ env.VERSION }}-${{ matrix.rid }}"
+          cp LICENSE README.md "$folder/"
+          tar -czf "$folder.tar.gz" -C "$folder" .
+
+      - name: Загрузка Windows-архива
+        if: matrix.kind == 'windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: MikroLab.Studio-${{ env.VERSION }}-win-x64
+          path: publish/*.zip
+          if-no-files-found: error
+
+      - name: Загрузка CLI-архива
+        if: matrix.kind == 'cli'
+        uses: actions/upload-artifact@v4
+        with:
+          name: mikrolab-${{ env.VERSION }}-${{ matrix.rid }}
+          path: publish/*.tar.gz
+          if-no-files-found: error
+
+  release:
+    name: Публикация предрелиза
+    needs: [build, prepare]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Загрузка артефактов
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Публикация GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag }}
+          name: MikroLab KR580 ${{ needs.prepare.outputs.tag }} (тестовая версия)
+          prerelease: true
+          files: dist/*
+          body: |
+            ## MikroLab KR580 — ${{ needs.prepare.outputs.tag }}
+
+            Первый тестовый предрелиз эмулятора КР580ВМ80А / Intel 8080.
+
+            ### Что нового
+
+            - Кроссплатформенная консольная среда **MikroLab.Cli** (`net10.0`).
+            - Команды `run`, `lab 1..5`, `assemble`, `disasm`, `info`.
+            - Автоматическая проверка результатов лабораторных работ 1–5.
+            - Два профиля процессора: **Legacy** (исторические особенности стенда) и **Newest** (полный набор инструкций i8080).
+            - Windows-сборка MikroLab Studio с лентой памяти Flamingo и консольной утилитой.
+            - Самодостаточные single-file сборки: .NET устанавливать не требуется.
+
+            ### Состав релиза
+
+            | Файл | Платформа | Содержимое |
+            | --- | --- | --- |
+            | `MikroLab.Studio-${{ needs.prepare.outputs.tag }}-win-x64.zip` | Windows x64 | `MikroLab.Studio.exe`, `mikrolab.exe`, `LICENSE`, `README.md` |
+            | `mikrolab-${{ needs.prepare.outputs.tag }}-linux-x64.tar.gz` | Linux x64 | `mikrolab`, `LICENSE`, `README.md` |
+            | `mikrolab-${{ needs.prepare.outputs.tag }}-linux-arm64.tar.gz` | Linux ARM64 | `mikrolab`, `LICENSE`, `README.md` |
+            | `mikrolab-${{ needs.prepare.outputs.tag }}-osx-x64.tar.gz` | macOS Intel | `mikrolab`, `LICENSE`, `README.md` |
+            | `mikrolab-${{ needs.prepare.outputs.tag }}-osx-arm64.tar.gz` | macOS Apple Silicon (M1–M4) | `mikrolab`, `LICENSE`, `README.md` |
+
+            ### Быстрый старт
+
+            **Windows:** распакуйте архив и запустите `MikroLab.Studio.exe` (GUI) или `mikrolab.exe` (консоль).
+
+            **Linux / macOS:**
+
+            ```bash
+            tar -xzf mikrolab-*.tar.gz
+            chmod +x mikrolab
+            ./mikrolab info
+            ./mikrolab lab 1
+            ```
+
+            На macOS при необходимости снимите карантин: `xattr -d com.apple.quarantine mikrolab`.
+
+            ### Ограничения
+
+            - Графический интерфейс MikroLab Studio доступен только в Windows-сборке.
+            - На Linux и macOS доступна консольная среда; GUI можно запускать через Wine / Proton / CrossOver.
+            - Это тестовая версия (`beta`), возможны ошибки и изменение интерфейса.
+
+            ### Проверка
+
+            Перед публикацией автоматически выполняются тесты Emulator.Tests и проверка команд `info` и `lab 1..5`.
+
+            Лицензия: GNU GPL v3. Исходный код: https://github.com/remageht/Emulator

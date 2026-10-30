@@ -31,8 +31,8 @@ namespace Emulator.Core.Assembler
         {
             new SampleProgram("Лаб. 1 · Регистры РОН (Legacy)", Lab1_Registers, Cpu.CpuProfile.Legacy),
             new SampleProgram("Лаб. 2 · Арифметика (Legacy)", Lab2_Arithmetic, Cpu.CpuProfile.Legacy),
-            new SampleProgram("Лаб. 3 · Логика и CMA (Legacy)", Lab3_Logic, Cpu.CpuProfile.Legacy),
-            new SampleProgram("Лаб. 4 · Циклы и массив (Legacy)", Lab4_Loops, Cpu.CpuProfile.Legacy),
+            new SampleProgram("Лаб. 3 · Логика и CMA (Newest)", Lab3_Logic, Cpu.CpuProfile.Extended),
+            new SampleProgram("Лаб. 4 · Циклы и массив (Newest)", Lab4_Loops, Cpu.CpuProfile.Extended),
             new SampleProgram("Лаб. 5 · Тумблеры → Лампы (Newest)", Lab5_PpiLamps, Cpu.CpuProfile.Extended),
             new SampleProgram("Лаб. 5 · Бегущие огни (Newest)", RunningLight, Cpu.CpuProfile.Extended),
             new SampleProgram("Пример · Сумма 1…5", SumOneToFive, Cpu.CpuProfile.Extended)
@@ -176,7 +176,7 @@ LOOP:   IN 0FAh           ; SA1..SA3 → A
         public const string Lab3_Logic =
 @"; Лабораторная работа №3 (Дмитренко П.С., КФУ, стр. 18-19)
 ; Логические операции: A = NOT(((A v B v M) * C) ^ D)
-; Рекомендуемый профиль: Legacy / Newest
+; Рекомендуемый профиль: Newest (требуется команда CMA)
 
         ORG 8000h
 
@@ -201,7 +201,7 @@ LOOP:   IN 0FAh           ; SA1..SA3 → A
         public const string Lab4_Loops =
 @"; Лабораторная работа №4 (Дмитренко П.С., КФУ, стр. 25)
 ; Циклы: вычисление суммы элементов массива в памяти
-; Рекомендуемый профиль: Legacy / Newest
+; Рекомендуемый профиль: Newest (требуются команды LDA/STA)
 
         ORG 8000h
 

@@ -128,3 +128,8 @@ TestResults/
 *.userosscache
 *.suo
 *.sln.docstates
+
+# Local publish output and generated release archives
+dist/
+release_packages/
+publish/
